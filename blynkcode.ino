@@ -1,0 +1,70 @@
+#define BLYNK_PRINT Serial
+#define BLYNK_TEMPLATE_ID "YOUR TEMPLATE ID"
+#define BLYNK_TEMPLATE_NAME "YOUR TEMPLATE NAME"
+
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <BlynkSimpleEsp32.h>
+#include "Arduino.h"
+#include "DHT.h"
+#include <Adafruit_BMP085.h>
+#include <Wire.h>
+
+float temperature;
+float humidity;
+float pressure;
+float mbar;
+float altitude;
+
+Adafruit_BMP085 myBarometer;
+
+char auth[] = "YOUR AUTH"; 
+char ssid[] = "NETWORK_NAME"; 
+char pass[] = "NETWORK_Password";
+
+#define DHTPIN 4
+#define DHTTYPE DHT11
+
+DHT dht(DHTPIN, DHTTYPE);
+BlynkTimer timer;
+
+void sendSensor()
+{
+  humidity = dht.readHumidity();
+  temperature = dht.readTemperature();
+
+  if (isnan(humidity) || isnan(temperature)) {
+    Serial.println("DHT sensor error: Failed to read data.");
+  } else {
+    Blynk.virtualWrite(V0, temperature);
+    Blynk.virtualWrite(V1, humidity);
+  }
+
+  if (!myBarometer.begin()) {
+    Serial.println("BMP sensor error: Sensor not detected.");
+  } else {
+    pressure = myBarometer.readPressure();
+    mbar = pressure / 100.0;
+    altitude = myBarometer.readAltitude();
+
+    Blynk.virtualWrite(V2, mbar);
+    Blynk.virtualWrite(V3, altitude); 
+  }
+}
+
+void setup()
+{
+  Serial.begin(115200);
+
+  dht.begin();
+  myBarometer.begin(); 
+
+  Blynk.begin(auth, ssid, pass);
+  timer.setInterval(1000L, sendSensor); 
+}
+
+void loop()
+{
+  Blynk.run();
+  timer.run();
+}
